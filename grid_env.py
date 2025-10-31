@@ -34,15 +34,17 @@ class GridEnv(gym.Env):
 
         # Define observation and action spaces
         self.observation_space = spaces.Box(
-            low=0, high=self.grid_size - 1, shape=(2,), dtype=np.int32
+            low=0, high=self.grid_size - 1, shape=(4,), dtype=np.int32
         )
-        self.action_space = spaces.Discrete(4)  # 0: Up, 1: Down, 2: Left, 3: Right
+        self.action_space = spaces.MultiDiscrete([4, 4])
+         #tuple of two actions: (action_Hero, action_Villain)  0: Up, 1: Down, 2: Left, 3: Right
 
         # Initialize pygame variables
         self.window = None
         self.clock = None
 
-        self.agent_pos = np.array([0, 0], dtype=np.int32)
+        self.Hero_pos = np.array([0, 0], dtype=np.int32)
+        self.Villain_pos = np.array([0, 0], dtype=np.int32)
         self.goal_pos = np.array([self.grid_size - 1, self.grid_size - 1], dtype=np.int32)
 
     def reset(self, *, seed=None, options=None):
@@ -53,9 +55,32 @@ class GridEnv(gym.Env):
             info (dict): optional info (empty here)
         """
         super().reset(seed=seed)
-        self.agent_pos = np.array([0, 0], dtype=np.int32)
+        self.Hero_pos = np.array([0, 0], dtype=np.int32)
+        self.Villain_pos = np.array([0, 1], dtype=np.int32)
         self.goal_pos = np.array([self.grid_size - 1, self.grid_size - 1], dtype=np.int32)
-        return self.agent_pos.copy(), {}
+        obs = np.concatenate([self.Hero_pos, self.Villain_pos])
+        return obs, {}
+    def _move_agent(self, pos, action):
+        """Helper to move a single agent safely within bounds."""
+        if action == 0 and pos[1] < self.grid_size - 1:  # Up
+            pos[1] += 1
+        elif action == 1 and pos[1] > 0:  # Down
+            pos[1] -= 1
+        elif action == 2 and pos[0] > 0:  # Left
+            pos[0] -= 1
+        elif action == 3 and pos[0] < self.grid_size - 1:  # Right
+            pos[0] += 1
+
+    def _undo_move(self, pos, action):
+        """Undo the last move if needed (e.g., collision)."""
+        if action == 0:
+            pos[1] -= 1
+        elif action == 1:
+            pos[1] += 1
+        elif action == 2:
+            pos[0] += 1
+        elif action == 3:
+            pos[0] -= 1
 
     def step(self, action):
         """
@@ -69,19 +94,43 @@ class GridEnv(gym.Env):
             truncated (bool): always False here
             info (dict): empty
         """
-        if action == 0 and self.agent_pos[1] < self.grid_size - 1:  # Up
-            self.agent_pos[1] += 1
-        elif action == 1 and self.agent_pos[1] > 0:  # Down
-            self.agent_pos[1] -= 1
-        elif action == 2 and self.agent_pos[0] > 0:  # Left
-            self.agent_pos[0] -= 1
-        elif action == 3 and self.agent_pos[0] < self.grid_size - 1:  # Right
-            self.agent_pos[0] += 1
+       
+        """
+        actions: tuple or list (a1, a2)
+        Each action ∈ {0: Up, 1: Down, 2: Left, 3: Right}
+        """
+        a1, a2 = action
 
-        done = np.array_equal(self.agent_pos, self.goal_pos)
+        # Move agent 1
+        self._move_agent(self.Hero_pos, a1)
+        # Move agent 2
+        self._move_agent(self.Villain_pos, a2)
+
+        # Prevent both agents from occupying the same cell
+        if np.array_equal(self.Hero_pos, self.Villain_pos):
+            # simple rule: move agent 2 back to previous position
+            self._undo_move(self.Villain_pos, a2)
+
+        # Check for goal
+        done1 = np.array_equal(self.Hero_pos, self.goal_pos)
+        done2 = np.array_equal(self.Villain_pos, self.goal_pos)
+        done = done1 or done2
+
         reward = 1 if done else -0.01
-        return self.agent_pos.copy(), reward, done, False, {}
 
+        obs = np.concatenate([self.Hero_pos, self.Villain_pos])
+        
+        # Add info about which agent reached the goal
+        info = {}
+        if done1:
+            info["winner"] = "Hero"
+        elif done2:
+              info["winner"] = "Villain"
+        else:
+            info["winner"] = None
+
+        return obs, reward, done, False, info
+    
     def render(self):
         """
         Render the environment using pygame
@@ -93,13 +142,14 @@ class GridEnv(gym.Env):
             pygame.init()
             self.window = pygame.display.set_mode((self.grid_size * self.cell_size,
                                                    self.grid_size * self.cell_size))
-            pygame.display.set_caption("PPO Grid World")
+            pygame.display.set_caption("PPO Grid World with 2 Agents")
             self.clock = pygame.time.Clock()
 
         # Colors
         white = (255, 255, 255)
         black = (0, 0, 0)
         blue = (50, 100, 255)
+        red = (255, 50, 50)
         green = (0, 200, 0)
 
         # Clear screen
@@ -111,15 +161,25 @@ class GridEnv(gym.Env):
         for y in range(0, self.grid_size * self.cell_size, self.cell_size):
             pygame.draw.line(self.window, black, (0, y), (self.grid_size * self.cell_size, y))
 
-        # Draw agent
-        ax, ay = self.agent_pos
+        # Draw agent (blue)
+        ax, ay = self.Hero_pos
         agent_rect = pygame.Rect(
             ax * self.cell_size + 5, (self.grid_size - 1 - ay) * self.cell_size + 5,
             self.cell_size - 10, self.cell_size - 10
         )
         pygame.draw.rect(self.window, blue, agent_rect)
+        
+        # Draw agent 2 (red)
+        ax2, ay2 = self.Villain_pos
+        rect2 = pygame.Rect(
+            ax2 * self.cell_size + 5,
+            (self.grid_size - 1 - ay2) * self.cell_size + 5,
+            self.cell_size - 10,
+            self.cell_size - 10,
+        )
+        pygame.draw.rect(self.window, red, rect2)
 
-        # Draw goal
+        # Draw goal (green)
         gx, gy = self.goal_pos
         goal_rect = pygame.Rect(
             gx * self.cell_size + 5, (self.grid_size - 1 - gy) * self.cell_size + 5,

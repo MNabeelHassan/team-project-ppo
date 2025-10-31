@@ -39,16 +39,22 @@ for episode in range(1, 6):
                 env.close()
                 exit()
 
-        action, _ = model.predict(obs)
-        obs, reward, done, _, _ = env.step(action)
+        action, _ = model.predict(obs,)
+        obs, reward, done, _, info = env.step(action)
         env.render()
         steps += 1
         time.sleep(0.1)
 
+        
         if done:
             goal_reached = True
+            winner = info.get("winner")
 
-    print(f"Episode {episode}: {'Goal reached ✅' if goal_reached else 'Failed ❌'}")
-
+    
+    if goal_reached:
+        print(f"Episode {episode}: {winner} reached the goal ")
+    else:
+        print(f"Episode {episode}: Failed ")
+    
 env.close()
 pygame.quit()
