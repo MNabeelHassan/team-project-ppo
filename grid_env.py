@@ -45,7 +45,8 @@ class GridEnv(gym.Env):
 
         self.Hero_pos = np.array([0, 0], dtype=np.int32)
         self.Villain_pos = np.array([0, 0], dtype=np.int32)
-        self.goal_pos = np.array([self.grid_size - 1, self.grid_size - 1], dtype=np.int32)
+        self.Hero_goal_pos = np.array([self.grid_size - 3, self.grid_size - 1], dtype=np.int32)
+        self.Villain_goal_pos = np.array([self.grid_size - 1, self.grid_size - 3], dtype=np.int32)
 
     def reset(self, *, seed=None, options=None):
         """
@@ -57,9 +58,9 @@ class GridEnv(gym.Env):
         super().reset(seed=seed)
         self.Hero_pos = np.array([0, 0], dtype=np.int32)
         self.Villain_pos = np.array([0, 1], dtype=np.int32)
-        self.goal_pos = np.array([self.grid_size - 1, self.grid_size - 1], dtype=np.int32)
         obs = np.concatenate([self.Hero_pos, self.Villain_pos])
         return obs, {}
+    
     def _move_agent(self, pos, action):
         """Helper to move a single agent safely within bounds."""
         if action == 0 and pos[1] < self.grid_size - 1:  # Up
@@ -100,11 +101,15 @@ class GridEnv(gym.Env):
         Each action ∈ {0: Up, 1: Down, 2: Left, 3: Right}
         """
         a1, a2 = action
+        # Check if agents have already reached their goals
+        hero_done = np.array_equal(self.Hero_pos, self.Hero_goal_pos)
+        villain_done = np.array_equal(self.Villain_pos, self.Villain_goal_pos)
 
-        # Move agent 1
-        self._move_agent(self.Hero_pos, a1)
-        # Move agent 2
-        self._move_agent(self.Villain_pos, a2)
+        # Move agents only if they haven't reached their goals
+        if not hero_done:
+            self._move_agent(self.Hero_pos, a1)
+        if not villain_done:
+            self._move_agent(self.Villain_pos, a2)
 
         # Prevent both agents from occupying the same cell
         if np.array_equal(self.Hero_pos, self.Villain_pos):
@@ -112,22 +117,25 @@ class GridEnv(gym.Env):
             self._undo_move(self.Villain_pos, a2)
 
         # Check for goal
-        done1 = np.array_equal(self.Hero_pos, self.goal_pos)
-        done2 = np.array_equal(self.Villain_pos, self.goal_pos)
+        done1 = np.array_equal(self.Hero_pos, self.Hero_goal_pos)
+        done2 = np.array_equal(self.Villain_pos, self.Villain_goal_pos)
         done = done1 or done2
 
-        reward = 1 if done else -0.01
+        reward = 0
+        if done1:
+            reward += 1
+        if done2:
+            reward += 1
+        if not done1 and not done2:
+            reward -= 0.01
 
         obs = np.concatenate([self.Hero_pos, self.Villain_pos])
         
         # Add info about which agent reached the goal
-        info = {}
-        if done1:
-            info["winner"] = "Hero"
-        elif done2:
-              info["winner"] = "Villain"
-        else:
-            info["winner"] = None
+        info = {
+            "hero_done": done1,
+            "villain_done": done2
+        }
 
         return obs, reward, done, False, info
     
@@ -151,6 +159,7 @@ class GridEnv(gym.Env):
         blue = (50, 100, 255)
         red = (255, 50, 50)
         green = (0, 200, 0)
+        plum = (103, 49, 71)
 
         # Clear screen
         self.window.fill(white)
@@ -179,13 +188,21 @@ class GridEnv(gym.Env):
         )
         pygame.draw.rect(self.window, red, rect2)
 
-        # Draw goal (green)
-        gx, gy = self.goal_pos
-        goal_rect = pygame.Rect(
-            gx * self.cell_size + 5, (self.grid_size - 1 - gy) * self.cell_size + 5,
+        # Draw goal for hero (green)
+        hx, hy = self.Hero_goal_pos
+        hero_goal_rect = pygame.Rect(
+            hx * self.cell_size + 5, (self.grid_size - 1 - hy) * self.cell_size + 5,
             self.cell_size - 10, self.cell_size - 10
         )
-        pygame.draw.rect(self.window, green, goal_rect)
+        pygame.draw.rect(self.window, green, hero_goal_rect)
+
+        # Draw goal for villain (purple)
+        vx, vy = self.Villain_goal_pos
+        villain_goal_rect = pygame.Rect(
+            vx * self.cell_size + 5, (self.grid_size - 1 - vy) * self.cell_size + 5,
+            self.cell_size - 10, self.cell_size - 10
+        )
+        pygame.draw.rect(self.window, plum, villain_goal_rect)
 
         pygame.display.flip()
         self.clock.tick(5)  # Control FPS
