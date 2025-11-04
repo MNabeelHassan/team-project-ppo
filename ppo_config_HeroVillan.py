@@ -27,14 +27,14 @@ PPO_CONFIG: Dict[str, Any] = {
     "policy_kwargs": {},
 }
 TRAINING_CONFIG: Dict[str, Any] = {
-    "num_episodes": 50,
-    "timesteps_per_episode": 200,
+    "num_episodes": 25,
+    "timesteps_per_episode": 100,
     "cell_size": 25,
 }
 Reward_Structure: Dict[str, Any] = {
-    "step_penalty": -0.01,
+    "step_penalty": 0,
     "win_reward": 2.0,
-    "lose_penalty": -3.0,
+    "lose_penalty": -2.0,
 }
 
 class PlotCallback(BaseCallback):
@@ -124,7 +124,7 @@ def print_ppo_hyperparams(model) -> None:
             v = getattr(model, k)
             print(f"{k:>16}: {_resolve_value_for_print(v)}")
         else:
-            print(f"{k:>16}: N/A")
+            print(f"{k:>16}: N/A")       
     print("=====================================================\n")
 
 def plot_training_curves(callback: PlotCallback, episode_steps, num_episodes: int) -> None:
