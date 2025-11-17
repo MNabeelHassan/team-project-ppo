@@ -78,9 +78,8 @@ class GridEnv(gym.Env):
 
         a1_act, a2_act = int(action[0]), int(action[1])
 
-        # Step penalty
-        r1 = self.step_penalty
-        #r2 = self.step_penalty
+        hero_reward = self.step_penalty
+        villain_reward = -self.step_penalty
 
         self._move_one(self.agent1_pos, a1_act)
         self._move_one(self.agent2_pos, a2_act)
@@ -93,14 +92,16 @@ class GridEnv(gym.Env):
 
         if caught:
             # Predator wins
-            r1 += self.lose_penalty
+            hero_reward += self.lose_penalty
+            villain_reward += self.win_reward
             done = True
             print("Caught")
             info["caught"] = True
 
         elif prey_at_goal:
             # Prey wins
-            r1 += self.win_reward
+            hero_reward += self.win_reward
+            villain_reward += self.lose_penalty
             done = True
             print("Prey at goal")
             info["prey_goal"] = True
@@ -108,7 +109,9 @@ class GridEnv(gym.Env):
         self.done = done
         truncated = False
 
-        reward = float(r1)
+        reward = float(hero_reward)
+        info["hero_reward"] = float(hero_reward)
+        info["villain_reward"] = float(villain_reward)
         return self._obs(), reward, done, truncated, info
 
     def render(self):

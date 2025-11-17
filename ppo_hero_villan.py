@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Categorical
 
 
-class HeroVillainPPO(nn.Module):
+class PPOAgent(nn.Module):
     def __init__(
         self,
-        obs_dim: int = 4,
-        hidden_dim: int = 128,
+        state_dim: int = 4,
+        action_dim: int = 4,
+        hidden_dim: int = 256,
         learning_rate: float = 3e-4,
         gamma: float = 0.99,
         gae_lambda: float = 0.95,
@@ -18,11 +18,10 @@ class HeroVillainPPO(nn.Module):
     ):
         super().__init__()
 
-        self.fc1 = nn.Linear(obs_dim, hidden_dim)
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.pi_agent = nn.Linear(hidden_dim, 4)
-        self.pi_adv = nn.Linear(hidden_dim, 4)
-        self.v_head = nn.Linear(hidden_dim, 1)
+        self.fc_pi = nn.Linear(hidden_dim, action_dim)
+        self.fc_v = nn.Linear(hidden_dim, 1)
 
         self.optimizer = optim.Adam(self.parameters(), lr=learning_rate)
 
@@ -31,101 +30,75 @@ class HeroVillainPPO(nn.Module):
         self.clip_eps = clip_eps
         self.K_epoch = K_epoch
 
-        self.memory = []
+        self.data = []
 
-    def _forward_shared(self, x: torch.Tensor) -> torch.Tensor:
+    def pi(self, x: torch.Tensor, softmax_dim: int = -1) -> torch.Tensor:
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        return x
-
-    def pi(self, x: torch.Tensor):
-        z = self._forward_shared(x)
-        probs_agent = F.softmax(self.pi_agent(z), dim=-1)
-        probs_adv = F.softmax(self.pi_adv(z), dim=-1)
-        return probs_agent, probs_adv
+        x = self.fc_pi(x)
+        prob = F.softmax(x, dim=softmax_dim)
+        return prob
 
     def v(self, x: torch.Tensor) -> torch.Tensor:
-        z = self._forward_shared(x)
-        return self.v_head(z)
-
-    def act(self, state):
-        state_tensor = torch.tensor(state, dtype=torch.float32)
-        probs_agent, probs_adv = self.pi(state_tensor)
-
-        dist_agent = Categorical(probs_agent)
-        dist_adv = Categorical(probs_adv)
-
-        action_agent = dist_agent.sample()
-        action_adv = dist_adv.sample()
-
-        logprob_agent = dist_agent.log_prob(action_agent)
-        logprob_adv = dist_adv.log_prob(action_adv)
-
-        return (
-            action_agent.item(),
-            action_adv.item(),
-            logprob_agent.item(),
-            logprob_adv.item(),
-        )
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        v = self.fc_v(x)
+        return v
 
     def put_data(self, transition):
-        self.memory.append(transition)
+        self.data.append(transition)
 
     def make_batch(self):
-        s_lst, a_agent_lst, a_adv_lst, r_lst, s_prime_lst, done_lst, logprob_agent_lst, logprob_adv_lst = zip(
-            *self.memory
-        )
+        s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, done_lst = [], [], [], [], [], []
+
+        for transition in self.data:
+            s, a, r, s_prime, prob_a, done = transition
+            s_lst.append(s)
+            a_lst.append([a])
+            r_lst.append([r])
+            s_prime_lst.append(s_prime)
+            prob_a_lst.append([prob_a])
+            done_mask = 0 if done else 1
+            done_lst.append([done_mask])
 
         s = torch.tensor(s_lst, dtype=torch.float32)
-        a_agent = torch.tensor(a_agent_lst)
-        a_adv = torch.tensor(a_adv_lst)
-        r = torch.tensor(r_lst, dtype=torch.float32).unsqueeze(1)
+        a = torch.tensor(a_lst)
+        r = torch.tensor(r_lst, dtype=torch.float32)
         s_prime = torch.tensor(s_prime_lst, dtype=torch.float32)
-        done_mask = torch.tensor(done_lst, dtype=torch.float32).unsqueeze(1)
-        logprob_agent = torch.tensor(logprob_agent_lst, dtype=torch.float32).unsqueeze(1)
-        logprob_adv = torch.tensor(logprob_adv_lst, dtype=torch.float32).unsqueeze(1)
+        done_mask = torch.tensor(done_lst, dtype=torch.float32)
+        prob_a = torch.tensor(prob_a_lst, dtype=torch.float32)
 
-        self.memory.clear()
-        return s, a_agent, a_adv, r, s_prime, done_mask, logprob_agent, logprob_adv
+        self.data = []
+        return s, a, r, s_prime, done_mask, prob_a
 
     def train_net(self):
-        if not self.memory:
+        if not self.data:
             return
 
-        s, a_agent, a_adv, r, s_prime, done_mask, logprob_agent_old, logprob_adv_old = self.make_batch()
-
-        with torch.no_grad():
-            td_target = r + self.gamma * self.v(s_prime) * (1 - done_mask)
-            delta = td_target - self.v(s)
-            advantage = torch.zeros_like(r)
-            advantage_sum = 0.0
-            for t in reversed(range(len(delta))):
-                advantage_sum = delta[t] + self.gamma * self.gae_lambda * (1 - done_mask[t]) * advantage_sum
-                advantage[t] = advantage_sum
+        s, a, r, s_prime, done_mask, prob_a = self.make_batch()
 
         for _ in range(self.K_epoch):
-            probs_agent, probs_adv = self.pi(s)
-            dist_agent = Categorical(probs_agent)
-            dist_adv = Categorical(probs_adv)
+            td_target = r + self.gamma * self.v(s_prime) * done_mask
+            delta = td_target - self.v(s)
+            delta = delta.detach().numpy()
 
-            logprob_agent = dist_agent.log_prob(a_agent)
-            logprob_adv = dist_adv.log_prob(a_adv)
+            advantage_lst = []
+            advantage = 0.0
+            for delta_t in delta[::-1]:
+                advantage = self.gamma * self.gae_lambda * advantage + delta_t[0]
+                advantage_lst.append([advantage])
+            advantage_lst.reverse()
+            advantage = torch.tensor(advantage_lst, dtype=torch.float32)
 
-            logprob_agent = logprob_agent.unsqueeze(1)
-            logprob_adv = logprob_adv.unsqueeze(1)
-
-            logprob_old = logprob_agent_old + logprob_adv_old
-            logprob_now = logprob_agent + logprob_adv
-            ratio = torch.exp(logprob_now - logprob_old)
+            pi = self.pi(s, softmax_dim=1)
+            pi_a = pi.gather(1, a)
+            ratio = torch.exp(torch.log(pi_a) - torch.log(prob_a))
 
             surr1 = ratio * advantage
             surr2 = torch.clamp(ratio, 1 - self.clip_eps, 1 + self.clip_eps) * advantage
-            policy_loss = -torch.min(surr1, surr2)
-
-            value_loss = F.mse_loss(self.v(s), td_target)
-            loss = policy_loss.mean() + value_loss
+            loss = -torch.min(surr1, surr2) + F.smooth_l1_loss(self.v(s), td_target.detach())
 
             self.optimizer.zero_grad()
-            loss.backward()
+            loss.mean().backward()
             self.optimizer.step()
 

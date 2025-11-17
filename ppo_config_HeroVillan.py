@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -27,23 +27,41 @@ Reward_Structure: Dict[str, Any] = {
 
 
 def plot_training_curves(
-    episode_rewards: List[float],
-    episode_steps: List[int],
+    hero_rewards: List[float],
+    hero_steps: List[int],
+    villain_rewards: Optional[List[float]] = None,
+    villain_steps: Optional[List[int]] = None,
 ) -> None:
-    episodes = np.arange(1, len(episode_rewards) + 1)
+    rows = 2
+    if villain_rewards is not None and villain_steps is not None:
+        rows = 4
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(10, 4 * rows / 2))
 
-    plt.subplot(2, 1, 1)
-    plt.plot(episodes, episode_rewards, label="Episode Reward")
+    hero_eps = np.arange(1, len(hero_rewards) + 1)
+    plt.subplot(rows, 1, 1)
+    plt.plot(hero_eps, hero_rewards, label="Hero Reward")
     plt.ylabel("Reward")
     plt.legend()
 
-    plt.subplot(2, 1, 2)
-    plt.plot(episodes, episode_steps, label="Steps per Episode")
+    plt.subplot(rows, 1, 2)
+    plt.plot(hero_eps, hero_steps, label="Hero Steps")
     plt.xlabel("Episode")
     plt.ylabel("Steps")
     plt.legend()
+
+    if rows == 4:
+        villain_eps = np.arange(1, len(villain_rewards) + 1)
+        plt.subplot(rows, 1, 3)
+        plt.plot(villain_eps, villain_rewards, label="Villain Reward", color="orange")
+        plt.ylabel("Reward")
+        plt.legend()
+
+        plt.subplot(rows, 1, 4)
+        plt.plot(villain_eps, villain_steps, label="Villain Steps", color="orange")
+        plt.xlabel("Episode")
+        plt.ylabel("Steps")
+        plt.legend()
 
     plt.tight_layout()
     plt.show()
