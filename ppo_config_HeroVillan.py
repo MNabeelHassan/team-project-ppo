@@ -1,167 +1,57 @@
-from typing import Any, Callable, Dict, Tuple, Union
-import numpy as np
+TRAINING_CONFIG = {
+    "num_episodes": 5000,
+    "timesteps_per_episode": 100,
+    "T_horizon": 64
+}
+
+PPO_CONFIG = {
+    "state_dim": 4,         # hero_x, hero_y, villain_x, villain_y
+    "action_dim": 4,        # up, down, left, right
+    "hidden_dim": 128,      # smaller than 256 to stabilize learning
+    "lr": 3e-4,             # slightly higher than 0.0005 for faster learning
+    "gamma": 0.99,          # emphasizes long-term reward
+    "lmbda": 0.95,          # GAE parameter
+    "eps_clip": 0.2,        # PPO clipping parameter
+    "K_epoch": 4,           # PPO update iterations per batch
+    "T_horizon": 64,        # steps per batch
+    "entropy_coef": 0.01,   # encourages exploration
+    "value_loss_coef": 0.5  # balance policy vs value loss
+}
+
+
+
 import matplotlib.pyplot as plt
-from stable_baselines3.common.callbacks import BaseCallback
 
+def plot_training_curves(hero_rewards, hero_steps, villain_rewards, villain_steps):
+    fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 
+    # Top-left: Hero Rewards
+    axs[0, 0].plot(hero_rewards, color="red ", label="Hero Steps")
+    axs[0, 0].set_title("Hero Rewards")
+    axs[0, 0].set_xlabel("Episode")
+    axs[0, 0].set_ylabel("Reward")
+    axs[0, 0].legend()
 
-PPO_CONFIG: Dict[str, Any] = {
-    "learning_rate": ('linear', 3e-4, 1e-5),  # or 3e-4
-    "n_steps": 2048,
-    "batch_size": 64,
-    "n_epochs": 10,
-    "gamma": 0.99,
-    "gae_lambda": 0.95,
-    "clip_range": 0.2,
-    "clip_range_vf": None,
-    "ent_coef": 0.0,
-    "vf_coef": 0.5,
-    "max_grad_norm": 0.5,
-    "target_kl": None,
-    "seed": None,
-    "device": "auto",
-    "verbose": 0,
-    "use_sde": False,
-    "sde_sample_freq": -1,
-    "normalize_advantage": True,
-    "policy_kwargs": {},
-}
-TRAINING_CONFIG: Dict[str, Any] = {
-    "num_episodes": 50,
-    "timesteps_per_episode": 200,
-    "cell_size": 25,
-}
-Reward_Structure: Dict[str, Any] = {
-    "step_penalty": -0.01,
-    "win_reward": 2.0,
-    "lose_penalty": -3.0,
-}
+    # Top-right: Hero Steps
+    axs[0, 1].plot(hero_steps, color="blue", label="Hero Steps")
+    axs[0, 1].set_title("Hero Steps")
+    axs[0, 1].set_xlabel("Episode")
+    axs[0, 1].set_ylabel("Steps")
+    axs[0, 1].legend()
 
-class PlotCallback(BaseCallback):
-    def __init__(self):
-        super().__init__()
-        self.policy_loss = []
-        self.value_loss = []
-        self.entropy = []
-        self.kl_divergence = []
-        self.timesteps = []
+    # Bottom-left: Villain Rewards
+    axs[1, 0].plot(villain_rewards, color="red", label="Villain Reward")
+    axs[1, 0].set_title("Villain Rewards")
+    axs[1, 0].set_xlabel("Episode")
+    axs[1, 0].set_ylabel("Reward")
+    axs[1, 0].legend()
 
-    def _on_step(self) -> bool:
-        logs = self.model.logger.name_to_value
-        if "train/policy_gradient_loss" in logs:
-            self.policy_loss.append(logs["train/policy_gradient_loss"])
-            self.value_loss.append(logs["train/value_loss"])
-            self.entropy.append(logs["train/entropy_loss"])
-            if "train/approx_kl" in logs:
-                self.kl_divergence.append(logs["train/approx_kl"])
-            else:
-                self.kl_divergence.append(np.nan)
-            self.timesteps.append(self.num_timesteps)
-        return True
-
-# ---------- Helpers ----------
-def make_linear_schedule(start_value: float, end_value: float) -> Callable[[float], float]:
-    """
-    SB3 schedule signature: f(progress_remaining) where progress_remaining in [0, 1].
-    At start of training: progress_remaining ≈ 1 -> returns start_value
-    At end of training:   progress_remaining ≈ 0 -> returns end_value
-    """
-    def schedule(progress_remaining: float) -> float:
-        return end_value + (start_value - end_value) * progress_remaining
-    return schedule
-
-def resolve_schedule_or_value(
-    val: Union[None, float, int, Tuple[str, float, float], Callable[[float], float]]
-):
-    if val is None:
-        return None
-    if isinstance(val, (int, float)):
-        return val
-    if isinstance(val, tuple) and len(val) == 3 and str(val[0]).lower() == "linear":
-        _, start, end = val
-        return make_linear_schedule(float(start), float(end))
-    if callable(val):
-        return val
-    return val
-
-def build_ppo_kwargs(cfg: Dict[str, Any]) -> Dict[str, Any]:
-    kwargs: Dict[str, Any] = {}
-    for key in ["learning_rate", "clip_range", "clip_range_vf"]:
-        if key in cfg:
-            kwargs[key] = resolve_schedule_or_value(cfg[key])
-
-    passthrough = [
-        "n_steps", "batch_size", "n_epochs", "gamma", "gae_lambda",
-        "ent_coef", "vf_coef", "max_grad_norm", "target_kl",
-        "seed", "device", "verbose", "use_sde", "sde_sample_freq",
-        "normalize_advantage"
-    ]
-    for k in passthrough:
-        if k in cfg:
-            kwargs[k] = cfg[k]
-    kwargs["policy_kwargs"] = cfg.get("policy_kwargs", {})
-    return kwargs
-
-
-def _resolve_value_for_print(val):
-    if callable(val):
-        try:
-            return val(1.0)
-        except Exception:
-            return str(val)
-    return val
-
-
-def print_ppo_hyperparams(model) -> None:
-    print("\n================= PPO Hyperparameters =================")
-    keys = [
-        "learning_rate", "n_steps", "batch_size", "n_epochs", "gamma",
-        "gae_lambda", "clip_range", "clip_range_vf", "ent_coef", "vf_coef",
-        "max_grad_norm", "target_kl", "seed"
-    ]
-    for k in keys:
-        if hasattr(model, k):
-            v = getattr(model, k)
-            print(f"{k:>16}: {_resolve_value_for_print(v)}")
-        else:
-            print(f"{k:>16}: N/A")
-    print("=====================================================\n")
-
-def plot_training_curves(callback: PlotCallback, episode_steps, num_episodes: int) -> None:
-
-    plt.figure(figsize=(12, 8))
-
-    # Policy Loss
-    plt.subplot(3, 2, 1)
-    plt.plot(callback.timesteps, callback.policy_loss, label="Policy Loss")
-    plt.ylabel("Policy Loss")
-    plt.legend()
-
-    # Value Loss
-    plt.subplot(3, 2, 2)
-    plt.plot(callback.timesteps, callback.value_loss, label="Value Loss")
-    plt.ylabel("Value Loss")
-    plt.legend()
-
-    # Entropy
-    plt.subplot(3, 2, 3)
-    plt.plot(callback.timesteps, callback.entropy, label="Entropy")
-    plt.ylabel("Entropy")
-    plt.legend()
-
-    # Average Steps per Episode
-    plt.subplot(3, 2, 4)
-    episodes = np.arange(1, num_episodes + 1)
-    plt.plot(episodes, episode_steps, label="Steps per Episode")
-    plt.xlabel("Episode")
-    plt.ylabel("Steps")
-    plt.legend()
-
-    # KL Divergence
-    plt.subplot(3, 2, 5)
-    plt.plot(callback.timesteps, callback.kl_divergence, label="KL Divergence")
-    plt.ylabel("KL Divergence")
-    plt.legend()
+    # Bottom-right: Villain Steps
+    axs[1, 1].plot(villain_steps, color="red", label="villan steps")
+    axs[1, 1].set_title("Villain Steps")
+    axs[1, 1].set_xlabel("Episode")
+    axs[1, 1].set_ylabel("Steps")
+    axs[1, 1].legend()
 
     plt.tight_layout()
     plt.show()
