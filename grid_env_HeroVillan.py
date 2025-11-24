@@ -79,7 +79,7 @@ class GridEnv(gym.Env):
         a1_act, a2_act = int(action[0]), int(action[1])
 
         hero_reward = self.step_penalty
-        villain_reward = -self.step_penalty
+        villain_reward = self.step_penalty
 
         self._move_one(self.agent1_pos, a1_act)
         self._move_one(self.agent2_pos, a2_act)
