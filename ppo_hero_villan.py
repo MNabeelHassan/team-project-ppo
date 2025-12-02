@@ -2,8 +2,8 @@
 # Co-evolution PPO Agent for Hero vs Villain Grid
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn as nn #module for neural network layers
+import torch.nn.functional as F #inlude activation func and loss functions
 import torch.optim as optim
 
 class PPOAgent(nn.Module):
@@ -21,11 +21,12 @@ class PPOAgent(nn.Module):
         self.K_epoch = K_epoch
 
         # Network layers
+        #state input -> hidden layer -> policy and value output layers
         self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc_pi = nn.Linear(hidden_dim, action_dim)
         self.fc_v = nn.Linear(hidden_dim, 1)
 
-        self.optimizer = optim.Adam(self.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.parameters(), lr=lr) #adam used for optization 
         self.data = []
 
     def pi(self, x, softmax_dim=-1):
@@ -40,7 +41,7 @@ class PPOAgent(nn.Module):
 
     def put_data(self, transition):
         self.data.append(transition)
-
+    #store for each transitiom 
     def make_batch(self):
         s_lst, a_lst, r_lst, s_prime_lst, prob_a_lst, done_lst = [], [], [], [], [], []
 

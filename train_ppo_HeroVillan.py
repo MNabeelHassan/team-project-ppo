@@ -18,7 +18,7 @@ PPO_CONFIG = {
 }
 
 TRAINING_CONFIG = {
-    "num_episodes": 5000,
+    "num_episodes": 1000,
     "timesteps_per_episode": 50,
     "T_horizon": 64,
 }
@@ -32,7 +32,7 @@ def handle_events():
 
 def sample_action(agent, state_tensor):
     with torch.no_grad():
-        probs = agent.pi(state_tensor, softmax_dim=-1)
+        probs = agent.pi(state_tensor, softmax_dim=-1) #how it gets prob 
     dist = Categorical(probs)
     a = dist.sample()
     return a.item(), probs[a].item()
@@ -51,7 +51,7 @@ def plot_training_curves(hero_rewards, hero_steps, villain_rewards, villain_step
         ax.legend()
     plt.tight_layout()
     plt.show()
-
+  #save plot and csv data
 # ======= MAIN TRAINING =======
 def main():
     pygame.init()
