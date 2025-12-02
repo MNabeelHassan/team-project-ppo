@@ -43,7 +43,7 @@ def sma(values, window=50):
         return np.array(values)
     return np.convolve(values, np.ones(window)/window, mode='valid')
 
-def plot_training_curves(hero_rewards, hero_steps, villain_rewards, villain_steps):
+def plot_training_curves(hero_rewards, hero_steps, villain_rewards, villain_steps, window=50):
     fig, axs = plt.subplots(2,2, figsize=(12,8))
 
     axs[0, 0].plot(sma(hero_rewards, window), color='blue', label=f"SMA {window}")
