@@ -4,6 +4,7 @@ from torch.distributions import Categorical
 from grid_env_HeroVillan import GridEnv
 from ppo_hero_villan import PPOAgent
 import matplotlib.pyplot as plt
+import numpy as np
 
 # ======= CONFIG =======
 PPO_CONFIG = {
@@ -37,16 +38,26 @@ def sample_action(agent, state_tensor):
     a = dist.sample()
     return a.item(), probs[a].item()
 
+def sma(values, window=50):
+    if len(values) < window:
+        return np.array(values)
+    return np.convolve(values, np.ones(window)/window, mode='valid')
+
 def plot_training_curves(hero_rewards, hero_steps, villain_rewards, villain_steps):
     fig, axs = plt.subplots(2,2, figsize=(12,8))
-    axs[0,0].plot(hero_rewards, label="Hero Rewards")
+
+    axs[0, 0].plot(sma(hero_rewards, window), color='blue', label=f"SMA {window}")
     axs[0,0].set_title("Hero Rewards")
-    axs[0,1].plot(villain_rewards, label="Villain Rewards")
+
+    axs[0, 1].plot(sma(villain_rewards, window), color='red', label=f"SMA {window}")
     axs[0,1].set_title("Villain Rewards")
-    axs[1,0].plot(hero_steps, label="Hero Steps")
+
+    axs[1, 0].plot(sma(hero_steps, window), color='blue', label=f"SMA {window}")
     axs[1,0].set_title("Hero Steps")
-    axs[1,1].plot(villain_steps, label="Villain Steps")
+
+    axs[1, 1].plot(sma(villain_steps, window), color='red', label=f"SMA {window}")
     axs[1,1].set_title("Villain Steps")
+    
     for ax in axs.flat:
         ax.legend()
     plt.tight_layout()
