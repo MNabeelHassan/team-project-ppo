@@ -7,9 +7,9 @@ class GridEnv:
         self.render_mode = render_mode
 
         # Positions initialized in reset
-        self.hero_pos = np.zeros(2, dtype=int)
-        self.villain_pos = np.zeros(2, dtype=int)
-        self.goal_pos = np.array([grid_size-1, grid_size-1])
+        self.hero_pos = [1,1] #np.zeros(2, dtype=int)
+        self.villain_pos = np.array([grid_size-3, grid_size-3])#np.zeros(2, dtype=int)
+        self.goal_pos = np.array([grid_size-1, grid_size-1]) #10-1 at 9x9 position
 
         # Rewards (symmetric)
         self.step_penalty = -0.1
@@ -50,8 +50,8 @@ class GridEnv:
     def step(self, actions):
         hero_action, villain_action = actions
 
-        hero_reward = self.step_penalty
-        villain_reward = self.step_penalty
+        hero_reward =+ self.step_penalty
+        villain_reward =+ self.step_penalty
 
         # Move agents
         self._move(self.hero_pos, hero_action)
