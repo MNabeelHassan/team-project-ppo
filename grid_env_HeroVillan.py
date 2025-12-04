@@ -1,5 +1,6 @@
 import numpy as np
 import pygame
+from ppo_config_HeroVillan import TRAINING_CONFIG
 
 class GridEnv:
     def __init__(self, grid_size=10, render_mode="human"):
@@ -29,8 +30,12 @@ class GridEnv:
 
     def reset(self):
         # Random starting positions
-        self.hero_pos = np.random.randint(0, self.grid_size, size=2)
-        self.villain_pos = np.random.randint(0, self.grid_size, size=2)
+        if TRAINING_CONFIG["random"]:
+            self.hero_pos = np.random.randint(0, self.grid_size, size=2)
+            self.villain_pos = np.random.randint(0, self.grid_size, size=2)
+        else:
+            self.hero_pos = np.array(TRAINING_CONFIG["hero_starting_pos"])
+            self.villain_pos = np.array(TRAINING_CONFIG["villain_starting_pos"])
         self.done = False
         return self._get_state(), {}
 

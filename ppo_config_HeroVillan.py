@@ -1,8 +1,15 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
 TRAINING_CONFIG = {
     "num_episodes": 1000,
     "timesteps_per_episode": 50,
     "T_horizon": 64,
     "sma_window_size": 10,
+    "random" : True,
+    "hero_starting_pos": [1, 1],
+    "villain_starting_pos": [7, 7],
 }
 
 
@@ -27,9 +34,6 @@ PPO_CONFIG_Villan = {
     "eps_clip": 0.1,
     "K_epoch": 3,
 }
-
-import numpy as np
-import matplotlib.pyplot as plt
 
 def moving_average(data, window=50):
     if len(data) < window:
