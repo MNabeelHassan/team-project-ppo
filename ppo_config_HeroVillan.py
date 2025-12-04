@@ -1,7 +1,31 @@
 TRAINING_CONFIG = {
-    "num_episodes": 100,
-    "timesteps_per_episode": 100,
-    "T_horizon": 64
+    "num_episodes": 1000,
+    "timesteps_per_episode": 50,
+    "T_horizon": 64,
+    "sma_window_size": 10,
+}
+
+
+PPO_CONFIG_Hero = {
+    "state_dim": 4,
+    "action_dim": 4,
+    "hidden_dim": 256,
+    "lr": 0.0005,
+    "gamma": 0.98,
+    "lmbda": 0.95,
+    "eps_clip": 0.1,
+    "K_epoch": 3,
+}
+
+PPO_CONFIG_Villan = {
+    "state_dim": 4,
+    "action_dim": 4,
+    "hidden_dim": 256,
+    "lr": 0.0005,
+    "gamma": 0.98,
+    "lmbda": 0.95,
+    "eps_clip": 0.1,
+    "K_epoch": 3,
 }
 
 PPO_CONFIG = {
