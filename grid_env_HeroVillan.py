@@ -13,9 +13,9 @@ class GridEnv:
         self.goal_pos = np.array([grid_size-1, grid_size-1]) #10-1 at 9x9 position
 
         # Rewards (symmetric)
-        self.step_penalty = -0.1
-        self.win_reward = +10
-        self.lose_reward = -10
+        self.step_penalty = TRAINING_CONFIG["step_penalty"]
+        self.win_reward = TRAINING_CONFIG["win_reward"]
+        self.lose_reward = TRAINING_CONFIG["lose_reward"]
 
         self.done = False
 
