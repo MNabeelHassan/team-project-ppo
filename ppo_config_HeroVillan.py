@@ -10,6 +10,9 @@ TRAINING_CONFIG = {
     "random" : True,
     "hero_starting_pos": [1, 1],
     "villain_starting_pos": [7, 7],
+    "step_penalty": -0.1,
+    "win_reward": +5,
+    "lose_reward": -5,
 }
 
 
@@ -115,3 +118,4 @@ def plot_training_curves(hero_rewards, hero_steps, villain_rewards, villain_step
 
 #     plt.tight_layout()
 #     plt.show()
+
