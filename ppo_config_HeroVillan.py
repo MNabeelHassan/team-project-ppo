@@ -28,21 +28,6 @@ PPO_CONFIG_Villan = {
     "K_epoch": 3,
 }
 
-PPO_CONFIG = {
-    "state_dim": 4,         # hero_x, hero_y, villain_x, villain_y
-    "action_dim": 4,        # up, down, left, right
-    "hidden_dim": 128,      # smaller than 256 to stabilize learning
-    "lr": 3e-4,             # slightly higher than 0.0005 for faster learning
-    "gamma": 0.99,          # discount factor
-    "lmbda": 0.95,          # adv func parameter
-    "eps_clip": 0.2,        # PPO clipping parameter/ policy chnge threshold
-    "K_epoch": 4,           # PPO update iterations per batch
-    "T_horizon": 64,        # steps per batch
-    "entropy_coef": 0.01,   # encourages exploration
-    "value_loss_coef": 0.5  # balance policy vs value loss
-}
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 
