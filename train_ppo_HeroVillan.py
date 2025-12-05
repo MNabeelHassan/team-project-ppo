@@ -33,10 +33,14 @@ def create_results_directory():
     """Create a directory for saving results"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     name_inp = input("Enter a name for the training session (or press Enter to use timestamp): ").strip()
+
+    base_dir = "results"
+
     if name_inp:
-        dir_name = f"training_results_{name_inp}"
+        dir_name = os.path.join(base_dir, f"training_results_{name_inp}")
     else:
-       dir_name = f"training_results_{timestamp}"
+        dir_name = os.path.join(base_dir, f"training_results_{timestamp}")
+        
     os.makedirs(dir_name, exist_ok=True)
     return dir_name
 
