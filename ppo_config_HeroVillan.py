@@ -23,8 +23,8 @@ PPO_CONFIG_Hero = {
     "lr": 0.0005,
     "gamma": 0.98,
     "lmbda": 0.95,
-    "eps_clip": 0.1,
-    "K_epoch": 3,
+    "eps_clip": 0.3,
+    "K_epoch": 9,
 }
 
 PPO_CONFIG_Villan = {
@@ -34,7 +34,7 @@ PPO_CONFIG_Villan = {
     "lr": 0.0005,
     "gamma": 0.98,
     "lmbda": 0.95,
-    "eps_clip": 0.1,
+    "eps_clip": 0.3,
     "K_epoch": 3,
 }
 
