@@ -65,9 +65,9 @@ def save_training_plots(hero_rewards, hero_steps, villain_rewards, villain_steps
     axs[0, 1].grid(True, alpha=0.3)
     axs[0, 1].legend()
     
-    # Plot 3: Hero Steps
+    # Plot 3: Episode Steps
     axs[1, 0].plot(sma(hero_steps, window), color='blue', label=f"SMA {window}")
-    axs[1, 0].set_title("Hero Steps")
+    axs[1, 0].set_title("Episode Steps")
     axs[1, 0].set_xlabel("Episode")
     axs[1, 0].set_ylabel("Steps")
     axs[1, 0].grid(True, alpha=0.3)
