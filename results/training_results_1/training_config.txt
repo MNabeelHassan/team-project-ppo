@@ -1,0 +1,35 @@
+=== TRAINING CONFIGURATION ===
+
+Training completed: 2025-12-09 10:23:07
+
+=== HERO AGENT CONFIG ===
+state_dim: 4
+action_dim: 4
+hidden_dim: 256
+lr: 0.001
+gamma: 0.98
+lmbda: 0.95
+eps_clip: 0.1
+K_epoch: 3
+
+=== VILLAIN AGENT CONFIG ===
+state_dim: 4
+action_dim: 4
+hidden_dim: 256
+lr: 0.001
+gamma: 0.98
+lmbda: 0.95
+eps_clip: 0.1
+K_epoch: 3
+
+=== TRAINING CONFIG ===
+num_episodes: 3000
+timesteps_per_episode: 50
+T_horizon: 64
+sma_window_size: 100
+random: True
+hero_starting_pos: [1, 1]
+villain_starting_pos: [7, 7]
+step_penalty: -0.1
+win_reward: 5
+lose_reward: -5
