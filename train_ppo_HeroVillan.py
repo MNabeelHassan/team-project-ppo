@@ -45,7 +45,7 @@ def create_results_directory():
     return dir_name
 
 def save_training_plots(hero_rewards, hero_steps, villain_rewards, villain_steps, 
-                        window, save_dir="."):
+                        window, save_dir=".", episode_data=None):
     """Save training plots to file"""
     fig, axs = plt.subplots(2, 2, figsize=(12, 8))
     
@@ -73,13 +73,26 @@ def save_training_plots(hero_rewards, hero_steps, villain_rewards, villain_steps
     axs[1, 0].grid(True, alpha=0.3)
     axs[1, 0].legend()
     
-    # Plot 4: Villain Steps
-    axs[1, 1].plot(sma(villain_steps, window), color='red', label=f"SMA {window}")
-    axs[1, 1].set_title("Villain Steps")
-    axs[1, 1].set_xlabel("Episode")
-    axs[1, 1].set_ylabel("Steps")
-    axs[1, 1].grid(True, alpha=0.3)
-    axs[1, 1].legend()
+    # Plot 4: Win Counts Bar Graph 
+    hero_wins = sum(1 for d in episode_data if d['winner'] == 'Hero')
+    villain_wins = sum(1 for d in episode_data if d['winner'] == 'Villain')
+    draws = sum(1 for d in episode_data if d['winner'] == 'None')
+    
+    labels = ['Hero Wins', 'Villain Wins', 'Draws']
+    values = [hero_wins, villain_wins, draws]
+    colors = ['blue', 'red', 'gray']
+    
+    bars = axs[1, 1].bar(labels, values, color=colors)
+    axs[1, 1].set_title("Win Counts")
+    axs[1, 1].set_ylabel("Number of Episodes")
+    
+    # Add value labels on top of bars
+    for bar in bars:
+        height = bar.get_height()
+        axs[1, 1].text(bar.get_x() + bar.get_width()/2., height,
+                    f'{int(height)}', ha='center', va='bottom')
+    
+    axs[1, 1].grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
     
@@ -229,7 +242,7 @@ def main():
     
     # Save plots
     save_training_plots(hero_rewards, hero_steps, villain_rewards, 
-                        villain_steps, window, results_dir)
+                        villain_steps, window, results_dir, episode_data)
     
     # Save CSV data
     save_training_data_to_csv(episode_data, results_dir)
