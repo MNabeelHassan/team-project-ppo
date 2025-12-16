@@ -172,7 +172,7 @@ def main():
     results_dir = create_results_directory()
     
     for ep in range(TRAINING_CONFIG["num_episodes"]):
-        state, _ = env.reset()
+        state = env.reset()
         done = False
         hero_ep_r, villain_ep_r = 0, 0
         steps = 0

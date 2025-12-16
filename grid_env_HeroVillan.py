@@ -37,7 +37,7 @@ class GridEnv:
             self.hero_pos = np.array(TRAINING_CONFIG["hero_starting_pos"])
             self.villain_pos = np.array(TRAINING_CONFIG["villain_starting_pos"])
         self.done = False
-        return self._get_state(), {}
+        return self._get_state()
 
     def _get_state(self):
         return np.concatenate([self.hero_pos, self.villain_pos]).astype(np.float32)
